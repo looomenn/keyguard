@@ -1,20 +1,17 @@
-[project]
+[tool.poetry]
 name = "keyguard"
 version = "0.1.0"
 description = "Biometric keystrokes app"
-authors = [
-    {name = "Your Name",email = "you@example.com"}
-]
-license = {text = "MIT"}
+authors = ["ange1o"]
+license = "MIT"
 readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-]
+packages = [{include = "keyguard"}]
 
 
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.poetry.dependencies]
+python = ">=3.11"
+pyqt6 = ">=6.9.1,<7.0.0"
+keyring = ">=24.3.0,<25.0.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.16.0"
@@ -23,3 +20,6 @@ flake8 = "^7.2.0"
 flake8-docstrings = "^1.7.0"
 flake8-bugbear = "^24.12.12"
 
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
