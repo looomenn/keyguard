@@ -104,25 +104,44 @@ def calculate_authentication_delta(
     actual: list[float],
     means: list[float],
     variances: list[float],
-    threshold_factor: float = 2.0
+    threshold_factor: float = 2.0,
+    min_threshold: float = 5.0
 ) -> tuple[list[float], list[float], list[bool]]:
     """
-    For a single candidate run, compute the absolute errors, per-position thresholds,
-    and a True/False flag for each whether abs(actual - mean) <= threshold.
+    For a single candidate run, compute:
+
+      deltas       = [abs(a_i - mean_i) for each position i]
+      thresholds   = [max(threshold_factor * sqrt(var_i), min_threshold) for each i]
+      ok_flags     = [delta_i <= threshold_i]
 
     Returns:
       (deltas, thresholds, ok_flags)
+
+    Raises:
+      ValueError if the input lists have different lengths.
     """
-    deltas     = []
-    thresholds = []
-    ok_flags   = []
+    if not (len(actual) == len(means) == len(variances)):
+        raise ValueError(
+            f"Input length mismatch: actual={len(actual)}, "
+            f"means={len(means)}, variances={len(variances)}"
+        )
+
+    deltas:     list[float] = []
+    thresholds: list[float] = []
+    ok_flags:   list[bool]  = []
+
     for a, m, v in zip(actual, means, variances):
-        delta = abs(a - m)
-        thresh = threshold_factor * (v ** 0.5)
-        ok = delta <= thresh
+        delta  = abs(a - m)
+        # compute raw threshold
+        raw_th = threshold_factor * (v ** 0.5)
+        # enforce a floor so you never get a zero threshold
+        thresh = raw_th if raw_th >= min_threshold else min_threshold
+        ok     = delta <= thresh
+
         deltas.append(delta)
         thresholds.append(thresh)
         ok_flags.append(ok)
+
     return deltas, thresholds, ok_flags
 
 
