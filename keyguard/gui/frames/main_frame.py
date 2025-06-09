@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
 )
 
 from .auth_frame import AuthFrame
-from .CardFrame import CardFrame
+from .card_frame import CardFrame
 from .training_frame import TrainingFrame
 
 
