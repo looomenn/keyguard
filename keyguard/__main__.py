@@ -15,14 +15,14 @@ Options:
 No options supported
 """
 import sys
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QKeySequence, QShortcut, QFont
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel
 
-from keyguard.gui.frames import MainFrame
-from keyguard.utils import load_font
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont, QKeySequence, QShortcut
+from PyQt6.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QWidget
 
 from keyguard.config import APP_SIZE, APP_TITLE, GLOBAL_STYLESHEET
+from keyguard.gui.frames import MainFrame
+from keyguard.utils import load_font
 
 
 class App(QMainWindow):
@@ -30,7 +30,6 @@ class App(QMainWindow):
 
     def __init__(self):
         """Initialize an instance of the App class."""
-        # windows setup
         super().__init__()
         load_font()
 
