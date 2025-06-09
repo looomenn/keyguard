@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
 
 from .auth_frame import AuthFrame
 from .CardFrame import CardFrame
-from .TrainingFrame import TrainingFrame
+from .training_frame import TrainingFrame
 
 
 class MainFrame(QWidget):
