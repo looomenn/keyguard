@@ -1,33 +1,52 @@
-import uuid
-import time
 import os
-from datetime import datetime
-import numpy as np
+import time
+import uuid
 
-from PyQt6.QtGui import QKeySequence, QKeyEvent
+import numpy as np
+from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QEvent
+
 from keyguard.gui.components.components import Button, LineEdit, ProgressBar
 from keyguard.gui.components.LabelValue import LabelValue
-from keyguard.logic import remove_outliers_per_position, compute_session_stats
-from keyguard.utils import delete_profile, get_resource_path, get_svg
+from keyguard.logic import compute_session_stats, remove_outliers_per_position
+from keyguard.utils import delete_profile, get_resource_path
 
 
 class LearningView(QWidget):
+    """LearningView class."""
+
     session_complete = pyqtSignal(dict)
     session_cancelled = pyqtSignal()
     state_changed = pyqtSignal(int)
     show_stats = pyqtSignal(dict)
     back_clicked = pyqtSignal()
 
-    def __init__(self, phrase, profile=None, parent=None, show_panel=True):
+    def __init__(
+        self,
+        phrase: str,
+        profile: dict | None = None,
+        parent: QWidget | None = None,
+        show_panel: bool = True,
+    ) -> None:
+        """Initialize LearningView.
+
+        Args:
+            phrase: the phrase to learn
+            profile: the profile data
+            parent: the parent widget
+            show_panel: whether to show the profile panel
+        """
         super().__init__(parent)
         self.phrase = phrase
         self.profile = profile or {}
-        self.profile_path = get_resource_path("keyguard/resources/profile.json")
-        self.max_runs = 10
+        self.profile_path = get_resource_path("resources/profile.json")
+        self.max_runs = 4
         self.max_mistakes = 3
         self.current_run = 0
         self.mistakes = 0
@@ -37,60 +56,58 @@ class LearningView(QWidget):
         self.accepted_runs = 0
         self.session_id = str(uuid.uuid4())[:8]
 
-        # Connect signals
         self.show_stats.connect(self._on_session_complete)
 
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(40)
 
-        # Left: Session collector
         session_frame = QFrame()
         session_frame.setProperty("class", "session-frame")
         session_layout = QVBoxLayout(session_frame)
         session_layout.setSpacing(24)
         session_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
 
-        # Center container for session content
         session_content = QWidget()
         session_content_layout = QVBoxLayout(session_content)
-        session_content_layout.setContentsMargins(40, 0, 0, 0) if show_panel else session_content_layout.setContentsMargins(40, 0, 40, 0)
+        session_content_layout.setContentsMargins(
+            40, 0, 0, 0
+        ) if show_panel else session_content_layout.setContentsMargins(40, 0, 40, 0)
         session_content_layout.setSpacing(24)
         session_content_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # Container for phrase and session ID in one row
+
         phrase_container = QWidget()
         phrase_container.setProperty("class", "phrase-container")
         phrase_layout = QHBoxLayout(phrase_container)
         phrase_layout.setContentsMargins(0, 0, 0, 0)
         phrase_layout.setSpacing(24)
-        
-        self.phrase_label = LabelValue("Фраза", str(self.phrase), size="large", bold=True)
+
+        self.phrase_label = LabelValue(
+            "Фраза", str(self.phrase), size="large", bold=True
+        )
         self.session_id_label = LabelValue("Session ID", self.session_id, size="large")
-        
+
         phrase_layout.addWidget(self.session_id_label)
         phrase_layout.addWidget(self.phrase_label)
         phrase_layout.addStretch(1)
-        
+
         session_content_layout.addWidget(phrase_container)
 
-        # Container for input to control its width
         input_container = QWidget()
         input_container.setProperty("class", "input-container")
         input_layout = QVBoxLayout(input_container)
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(0)
-    
+
         self.input = LineEdit()
         self.input.setMinimumHeight(60)
         self.input.setPlaceholderText("Введіть фразу.")
         self.input.installEventFilter(self)
         self.input.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.input.installEventFilter(self)
-        
+
         input_layout.addWidget(self.input)
         session_content_layout.addWidget(input_container)
-        
 
         progress_container = QWidget()
         progress_container.setProperty("class", "progress-container")
@@ -102,7 +119,7 @@ class LearningView(QWidget):
         self.progress.setValue(0)
         progress_layout.addWidget(self.progress)
         session_content_layout.addWidget(progress_container)
-        
+
         hint_container = QWidget()
         hint_container.setProperty("class", "hint-container")
         hint_layout = QVBoxLayout(hint_container)
@@ -113,7 +130,6 @@ class LearningView(QWidget):
         hint_layout.addWidget(self.hint, alignment=Qt.AlignmentFlag.AlignCenter)
         session_content_layout.addWidget(hint_container)
 
-
         button_container = QWidget()
         button_container.setProperty("class", "button-container")
         button_layout = QVBoxLayout(button_container)
@@ -122,14 +138,12 @@ class LearningView(QWidget):
         cancel = Button("Нова сесія")
         cancel.clicked.connect(self.session_cancelled.emit)
         button_layout.addWidget(cancel, alignment=Qt.AlignmentFlag.AlignLeft)
-        
+
         if show_panel:
             session_content_layout.addWidget(button_container)
 
         session_layout.addWidget(session_content)
         main_layout.addWidget(session_frame, stretch=3)
-
-        # Right: Profile info
         if show_panel:
             profile_frame = QFrame()
             profile_frame.setProperty("class", "profile-panel")
@@ -141,20 +155,31 @@ class LearningView(QWidget):
             title.setProperty("class", "profile-panel_title")
             profile_layout.addWidget(title)
 
-            # Create profile info rows using LabelValue
             self.profile_labels = {}
-            self.profile_labels["USERID"] = LabelValue("USERID", str(self.profile.get("uuid", "N/A")), size="medium", bold=True)
-            self.profile_labels["Created"] = LabelValue("Created", str(self.profile.get("created", "N/A")), size="medium")
-            self.profile_labels["Updated"] = LabelValue("Updated", str(self.profile.get("updated", "N/A")), size="medium")
-            self.profile_labels["RUNS"] = LabelValue("Total runs", str(self.profile.get("total_runs", "N/A")), size="medium", bold=True)
-            
+            self.profile_labels["USERID"] = LabelValue(
+                "USERID", str(self.profile.get("uuid", "N/A")), size="medium", bold=True
+            )
+            self.profile_labels["Created"] = LabelValue(
+                "Created", str(self.profile.get("created", "N/A")), size="medium"
+            )
+            self.profile_labels["Updated"] = LabelValue(
+                "Updated", str(self.profile.get("updated", "N/A")), size="medium"
+            )
+            self.profile_labels["RUNS"] = LabelValue(
+                "Total runs",
+                str(self.profile.get("total_runs", "N/A")),
+                size="medium",
+                bold=True,
+            )
+
             avg_dwell = "N/A"
             means = self.profile.get("means")
             if means and isinstance(means, list) and len(means) > 0:
-                avg_dwell = f"{sum(means)/len(means):.0f} ms"
-            self.profile_labels["Avg Dwell"] = LabelValue("Avg Dwell", avg_dwell, size="medium", bold=True)
+                avg_dwell = f"{sum(means) / len(means):.0f} ms"
+            self.profile_labels["Avg Dwell"] = LabelValue(
+                "Avg Dwell", avg_dwell, size="medium", bold=True
+            )
 
-            # Add all profile labels to layout
             for label in self.profile_labels.values():
                 profile_layout.addWidget(label)
 
@@ -168,9 +193,17 @@ class LearningView(QWidget):
 
             main_layout.addWidget(profile_frame, stretch=1)
 
-    def eventFilter(self, obj, event):
-        if obj is self.input:
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # noqa: N802
+        """Handle events for the input widget.
 
+        Args:
+            obj: the object that sent the event
+            event: the event
+
+        Returns:
+            bool: whether the event was handled
+        """
+        if obj is self.input:
             if event.type() == QEvent.Type.KeyPress:
                 self._press_ts = time.perf_counter()
                 return False
@@ -183,7 +216,7 @@ class LearningView(QWidget):
                     entered = self.input.text()
                     if entered == self.phrase:
                         # compute dwell-times for this run
-                        dwells = [ (r-p)*1000 for (p,r) in self.timestamps ]
+                        dwells = [(r - p) * 1000 for (p, r) in self.timestamps]
                         self.session_runs.append(dwells)
                         self.accepted_runs += 1
                         self.current_run += 1
@@ -227,22 +260,10 @@ class LearningView(QWidget):
 
                     self.phrase_label.highlight_match(matched, incorrect)
 
-
-                    # current_text = self.input.text()
-                    # matched = 0
-                    # incorrect = 0
-                    # for i, (typed, expected) in enumerate(zip(current_text, self.phrase)):
-                    #     if typed == expected:
-                    #         matched = i + 1
-                    #     else:
-                    #         incorrect = i + 1
-                    #         break
-                    # self.phrase_label.highlight_match(matched, incorrect)
-                    # return True
-
         return super().eventFilter(obj, event)
 
-    def _reset_session(self):
+    def _reset_session(self) -> None:
+        """Reset the session."""
         self.current_run = 0
         self.mistakes = 0
         self.session_runs.clear()
@@ -250,7 +271,8 @@ class LearningView(QWidget):
         self.progress.setValue(0)
         self.phrase_label.highlight_match(0)
 
-    def _finish_session(self):
+    def _finish_session(self) -> None:
+        """Finish the session."""
         cleaned = remove_outliers_per_position(self.session_runs)
         mean_s, std_s, _ = compute_session_stats(cleaned)
         session = {
@@ -261,37 +283,37 @@ class LearningView(QWidget):
             "accepted_runs": self.accepted_runs,
             "runs": cleaned,
             "mean": mean_s,
-            "stddev": std_s
+            "stddev": std_s,
         }
         self.session_complete.emit(session)
         self.show_stats.emit(session)
 
-    def _on_profile_created(self):
+    def _on_profile_created(self) -> None:
         """Update UI when profile is created."""
         print("asdasd")
-        if hasattr(self, 'delete_btn'):
+        if hasattr(self, "delete_btn"):
             self.delete_btn.setEnabled(True)
 
-    def _update_delete_button(self):
+    def _update_delete_button(self) -> None:
         """Update delete button state based on profile existence."""
-        if hasattr(self, 'delete_btn'):
+        if hasattr(self, "delete_btn"):
             self.delete_btn.setEnabled(os.path.exists(self.profile_path))
 
-    def _on_delete_profile(self):
+    def _on_delete_profile(self) -> None:
         """Handle profile deletion."""
         if delete_profile(self.profile_path):
             self.state_changed.emit(0)
 
-    def _on_stats_back(self):
+    def _on_stats_back(self) -> None:
+        """Handle stats back."""
         self.content_stack.setCurrentIndex(0)
 
-    def _on_session_complete(self, session):
+    def _on_session_complete(self, session: dict) -> None:
         """Handle session completion."""
         # Compute statistics
         if session.get("runs"):
-
             dwells = session["runs"][0]
             session["mean"] = np.mean(dwells)
             session["std"] = np.std(dwells)
-            
+
         self.session_cancelled.emit()
