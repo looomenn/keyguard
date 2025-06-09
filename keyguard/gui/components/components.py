@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt
 class LineEdit(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
+
         self.setStyleSheet("""
             QLineEdit {
                 background-color: #000000;
