@@ -99,7 +99,7 @@ class AuthFrame(QWidget):
 
     def _update_state(self) -> None:
         """Update the view state based on profile existence and runs."""
-        profile = load_profile("resources/profile.json")
+        profile = load_profile("profile.json")
 
         if (
             not profile
