@@ -1,30 +1,40 @@
 """Logic module."""
 
-
-import statistics
-from typing import Any, List
 import math
-from scipy.stats import t as t_dist, f as f_dist
+import statistics
+from typing import Any
+
+from scipy.stats import f as f_dist
+from scipy.stats import t as t_dist
 
 
-def compute_session_stats(runs: list[list[float]]) -> tuple[float, float, list[list[float]]]:
-    """
+def compute_session_stats(
+    runs: list[list[float]],
+) -> tuple[float, float, list[list[float]]]:
+    """Compute session statistics.
+
     Given a list of dwell-time runs (each run is a list of floats for each character),
     compute per-run means, per-run stddev, and also return the raw runs.
 
     Returns:
-      (mean_session, stddev_session, runs)
+        tuple[float, float, list[list[float]]]: the session statistics
     """
     flat = [value for run in runs for value in run]
+    if not flat:
+        return 0.0, 0.0, runs
+
     mean_session = statistics.mean(flat)
-    stddev_session = max(statistics.pstdev(flat), 1.0)
-    return mean_session, stddev_session, runs
+    stddev = statistics.stdev(flat)
+
+    return mean_session, stddev, runs
 
 
 def update_aggregate_profile(profile: dict[str, Any], session: dict[str, Any]) -> None:
-    """
-    Incrementally update profile['means'] and profile['variances'] with the new session data,
-    and bump profile['total_runs'].
+    """Incrementally update profile['means'] and profile['variances'].
+
+    Args:
+        profile: the profile data
+        session: the session data
 
     Profile fields used:
       profile["means"]: List[float]
@@ -33,57 +43,56 @@ def update_aggregate_profile(profile: dict[str, Any], session: dict[str, Any]) -
 
     Session fields required:
       session["runs"]: List[List[float]]  (accepted dwell runs)
-      session["runs_count"]: int          (number of runs in this session)
     """
     new_runs = session["runs"]
     num_new = len(new_runs)
     if num_new == 0:
         return
 
-    # Обчислюємо середні та дисперсії по позиціях для цієї сесії
-    cols = list(zip(*new_runs))  # транспонуємо: по символах
+    cols = list(zip(*new_runs, strict=False))
     session_means = [statistics.mean(c) for c in cols]
-    session_vars  = [statistics.pstdev(c) ** 2 for c in cols]  # дисперсія
+    session_vars = [statistics.stdev(c) ** 2 for c in cols]
 
-    # Якщо це перша сесія — просто записуємо
     if profile.get("total_runs", 0) == 0 or not profile.get("means"):
-        profile["means"]     = session_means
+        profile["means"] = session_means
         profile["variances"] = session_vars
         profile["total_runs"] = num_new
         return
 
-    # Інакше — інкрементальне оновлення (пулінг)
     old_means = profile["means"]
     old_vars = profile["variances"]
     old_n = profile["total_runs"]
 
     updated_means = []
-    updated_vars  = []
-    for i, (m_old, v_old, m_s, v_s) in enumerate(zip(old_means, old_vars, session_means, session_vars)):
-        # нове середнє = (m_old*old_n + m_s*num_new) / (old_n + num_new)
+    updated_vars = []
+
+    for _, (m_old, v_old, m_s, v_s) in enumerate(
+        zip(old_means, old_vars, session_means, session_vars, strict=False)
+    ):
         total_n = old_n + num_new
         m_new = (m_old * old_n + m_s * num_new) / total_n
 
-        # нова дисперсія (пулінг)
-        # σ²_new = [v_old*old_n + v_s*num_new + (m_old - m_s)² * (old_n*num_new/total_n)] / total_n
         delta = m_old - m_s
-        pooled = (v_old * old_n + v_s * num_new + (delta * delta) * (old_n * num_new / total_n))
+        pooled = (
+            v_old * old_n
+            + v_s * num_new
+            + (delta * delta) * (old_n * num_new / total_n)
+        )
         v_new = pooled / total_n
 
         updated_means.append(m_new)
         updated_vars.append(v_new)
 
-    profile["means"]     = updated_means
+    profile["means"] = updated_means
     profile["variances"] = updated_vars
     profile["total_runs"] = total_n
 
 
 def rebuild_profile_from_history(profile: dict[str, Any]) -> None:
-    """
-    Completely recompute profile['means'], ['variances'], and ['total_runs']
-    by pooling ALL runs in profile['sessions'].
+    """Completely recompute profile['means'], ['variances'], and ['total_runs'].
 
-    Useful for a periodic "rebase" after many sessions.
+    Args:
+        profile: the profile data to rebuild
     """
     all_runs = []
     for sess in profile.get("sessions", []):
@@ -94,9 +103,9 @@ def rebuild_profile_from_history(profile: dict[str, Any]) -> None:
         profile["total_runs"] = 0
         return
 
-    cols = list(zip(*all_runs))
+    cols = list(zip(*all_runs, strict=False))
     profile["means"] = [statistics.mean(c) for c in cols]
-    profile["variances"] = [statistics.pstdev(c) ** 2 for c in cols]
+    profile["variances"] = [statistics.stdev(c) ** 2 for c in cols]
     profile["total_runs"] = len(all_runs)
 
 
@@ -105,14 +114,16 @@ def calculate_authentication_delta(
     means: list[float],
     variances: list[float],
     threshold_factor: float = 2.0,
-    min_threshold: float = 5.0
+    min_threshold: float = 5.0,
 ) -> tuple[list[float], list[float], list[bool]]:
-    """
-    For a single candidate run, compute:
+    """Compute the delta, threshold, and ok flag for a single candidate run.
 
-      deltas       = [abs(a_i - mean_i) for each position i]
-      thresholds   = [max(threshold_factor * sqrt(var_i), min_threshold) for each i]
-      ok_flags     = [delta_i <= threshold_i]
+    Args:
+        actual: the actual dwell times
+        means: the means of the dwell times
+        variances: the variances of the dwell times
+        threshold_factor: the threshold factor
+        min_threshold: the minimum threshold
 
     Returns:
       (deltas, thresholds, ok_flags)
@@ -126,17 +137,18 @@ def calculate_authentication_delta(
             f"means={len(means)}, variances={len(variances)}"
         )
 
-    deltas:     list[float] = []
+    deltas: list[float] = []
     thresholds: list[float] = []
-    ok_flags:   list[bool]  = []
+    ok_flags: list[bool] = []
 
-    for a, m, v in zip(actual, means, variances):
-        delta  = abs(a - m)
+    for a, m, v in zip(actual, means, variances, strict=False):
+        delta = abs(a - m)
         # compute raw threshold
-        raw_th = threshold_factor * (v ** 0.5)
+        raw_th = threshold_factor * (v**0.5)
+
         # enforce a floor so you never get a zero threshold
         thresh = raw_th if raw_th >= min_threshold else min_threshold
-        ok     = delta <= thresh
+        ok = delta <= thresh
 
         deltas.append(delta)
         thresholds.append(thresh)
@@ -145,10 +157,15 @@ def calculate_authentication_delta(
     return deltas, thresholds, ok_flags
 
 
-def remove_outliers(data: List[float], alpha: float = 0.05) -> List[float]:
-    """
-    Remove gross errors (outliers) from a sample using the t-test as described in the methodical instructions.
-    Returns a new list with outliers removed.
+def remove_outliers(data: list[float], alpha: float = 0.05) -> list[float]:
+    """Remove gross errors (outliers) from a sample using the t-test.
+
+    Args:
+        data: the data to remove outliers from
+        alpha: the significance level
+
+    Returns:
+        list[float]: the data with outliers removed
     """
     data = data.copy()
     n = len(data)
@@ -157,9 +174,11 @@ def remove_outliers(data: List[float], alpha: float = 0.05) -> List[float]:
     while n > 2:
         mean = statistics.mean(data)
         std = statistics.stdev(data)
+        if std == 0:
+            break
         max_dev = max(data, key=lambda x: abs(x - mean))
         t_stat = abs(max_dev - mean) / (std / math.sqrt(n))
-        t_crit = t_dist.ppf(1 - alpha/2, n - 2)
+        t_crit = t_dist.ppf(1 - alpha / 2, n - 2)
         if t_stat > t_crit:
             data.remove(max_dev)
             n -= 1
@@ -168,68 +187,135 @@ def remove_outliers(data: List[float], alpha: float = 0.05) -> List[float]:
     return data
 
 
-def t_test(sample1: List[float], sample2: List[float], alpha: float = 0.05) -> bool:
-    """
-    Test the hypothesis that the means of two samples are equal (Student's t-test).
-    Returns True if the null hypothesis (means are equal) is NOT rejected.
+def t_test(sample1: list[float], sample2: list[float], alpha: float = 0.05) -> bool:
+    """Student's t-test with automatic variance check.
+
+    Args:
+        sample1: the first sample
+        sample2: the second sample
+        alpha: the significance level
+
+    Returns:
+        bool: whether the hypothesis of equal means is not rejected
     """
     n1 = len(sample1)
     n2 = len(sample2)
     if n1 < 2 or n2 < 2:
         return False
+
     mean1 = statistics.mean(sample1)
     mean2 = statistics.mean(sample2)
     var1 = statistics.variance(sample1)
     var2 = statistics.variance(sample2)
-    # Pooled standard deviation
-    S_p = math.sqrt(((n1-1)*var1 + (n2-1)*var2) / (n1+n2-2))
-    t_value = abs(mean1 - mean2) / (S_p * math.sqrt(1/n1 + 1/n2))
-    t_crit = t_dist.ppf(1 - alpha/2, n1 + n2 - 2)
+
+    equal_var = f_test(var1, var2, n1, n2, alpha)
+
+    if equal_var:
+        s_p = math.sqrt(((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2))
+        t_value = abs(mean1 - mean2) / (s_p * math.sqrt(1 / n1 + 1 / n2))
+        df = n1 + n2 - 2
+    else:
+        t_value = abs(mean1 - mean2) / math.sqrt(var1 / n1 + var2 / n2)
+        df_num = (var1 / n1 + var2 / n2) ** 2
+        df_den = (var1 / n1) ** 2 / (n1 - 1) + (var2 / n2) ** 2 / (n2 - 1)
+        df = df_num / df_den if df_den != 0 else 1
+
+    t_crit = t_dist.ppf(1 - alpha / 2, df)
     return t_value < t_crit
 
 
 def f_test(var1: float, var2: float, n1: int, n2: int, alpha: float = 0.05) -> bool:
+    """Fisher's F-test for equality of variances.
+
+    Args:
+        var1: the variance of the first sample
+        var2: the variance of the second sample
+        n1: the size of the first sample
+        n2: the size of the second sample
+        alpha: the significance level
+
+    Returns:
+        bool: whether the hypothesis of equal variances is not rejected
     """
-    Test the hypothesis that the variances of two samples are equal (Fisher's F-test).
-    Returns True if the null hypothesis (variances are equal) is NOT rejected.
-    """
-    F = max(var1, var2) / min(var1, var2)
-    dfn = n1 - 1
-    dfd = n2 - 1
-    F_crit = f_dist.ppf(1 - alpha/2, dfn, dfd)
-    return F < F_crit
+    if var1 == 0 or var2 == 0:
+        return True
+    if var1 >= var2:
+        fisher = var1 / var2 if var2 != 0 else float("inf")
+        dfn, dfd = n1 - 1, n2 - 1
+    else:
+        fisher = var2 / var1 if var1 != 0 else float("inf")
+        dfn, dfd = n2 - 1, n1 - 1
+    fisher_crit = f_dist.ppf(1 - alpha / 2, dfn, dfd)
+    return fisher_crit > fisher
 
 
-def remove_outliers_per_position(runs: list[list[float]], alpha: float = 0.05) -> list[list[float]]:
-    """
-    Remove outliers for each position (column) in a list of runs.
-    Returns a new list of runs with outliers removed per position.
+def remove_outliers_per_position(
+    runs: list[list[float]], alpha: float = 0.05
+) -> list[list[float]]:
+    """Remove outlier runs based on per-position t-tests.
+
+    Args:
+        runs: the runs to remove outliers from
+        alpha: the significance level
+
+    Returns:
+        list[list[float]]: the runs with outliers removed
     """
     if not runs:
         return []
-    cols = list(zip(*runs))
-    cleaned_cols = [remove_outliers(list(col), alpha) for col in cols]
-    max_len = max(len(col) for col in cleaned_cols)
-    cleaned_runs = []
-    for i in range(max_len):
-        run = []
-        for col in cleaned_cols:
-            run.append(col[i] if i < len(col) else None)
-        cleaned_runs.append(run)
-    cleaned_runs = [run for run in cleaned_runs if all(x is not None for x in run)]
-    return cleaned_runs
+
+    num_positions = len(runs[0])
+    outliner_indices: set[int] = set()
+
+    for pos in range(num_positions):
+        values_with_idx = [
+            (run[pos], idx) for idx, run in enumerate(runs) if len(run) > pos
+        ]
+        data = values_with_idx
+        n = len(data)
+
+        if n < 3:
+            continue
+
+        while n > 2:
+            mean = statistics.mean(v for v, _ in data)
+            std = statistics.stdev(v for v, _ in data)
+
+            if std == 0:
+                break
+
+            value, idx = max(data, key=lambda item: abs(item[0] - mean))
+            t_stat = abs(value - mean) / (std / math.sqrt(n))
+            t_crit = t_dist.ppf(1 - alpha / 2, n - 2)
+
+            if t_stat > t_crit:
+                outliner_indices.add(idx)
+                data = [item for item in data if item[1] != idx]
+                n -= 1
+            else:
+                break
+
+    return [run for idx, run in enumerate(runs) if idx not in outliner_indices]
 
 
 def calculate_error_rates(results: list[bool]) -> tuple[float, float]:
+    """Calculate error rates of 1st and 2nd kind based on a list of boolean results.
+
+    Args:
+        results: the list of boolean results
+
+    Returns:
+        tuple[float, float]: the error rates
     """
-    Calculate error rates of 1st and 2nd kind based on a list of boolean results.
-    P1 = N1 / N0 (legitimate user not identified)
-    P2 = N2 / N0 (impostor identified as legitimate)
-    Returns (P1, P2)
-    """
-    N0 = len(results)
-    N1 = results.count(False)  # 1-го роду: легітимний не ідентифікований
-    N2 = results.count(True)   # 2-го роду: зловмисник ідентифікований як легітимний (якщо є такі дані)
-    P1 = N1 / N0 if N0 else 0.0
-    P2 = N2 / N0 if N0 else 0.0
-    return P1, P2
+    n_0 = len(results)
+
+    # 1-го роду: легітимний не ідентифікований  # noqa: RUF003
+    n_1 = results.count(False)
+
+    # 2-го роду: зловмисник ідентифікований як легітимний (якщо є такі дані) # noqa: RUF003
+    n_2 = results.count(True)
+
+    p_1 = n_1 / n_0 if n_0 else 0.0
+    p_2 = n_2 / n_0 if n_0 else 0.0
+
+    return p_1, p_2
