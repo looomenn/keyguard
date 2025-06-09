@@ -1,34 +1,39 @@
 """Main Frame."""
 
 from PyQt6.QtWidgets import (
-    QWidget, QHBoxLayout, QSizePolicy, QLabel, QVBoxLayout, QStackedWidget
+    QHBoxLayout,
+    QSizePolicy,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt
 
+from .auth_frame import AuthFrame
 from .CardFrame import CardFrame
 from .TrainingFrame import TrainingFrame
-from .AuthFrame import AuthFrame
 
 
 class MainFrame(QWidget):
-    def __init__(self, parent=None):
+    """MainFrame class."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Initialize MainFrame.
+
+        Args:
+            parent: the parent widget
+        """
         super().__init__(parent)
 
         self.train_card = CardFrame(
-            "Тренування",
-            parent=self,
-            image_path="keyguard/resources/training.svg"
+            "Тренування", parent=self, image_path="resources/training.svg"
         )
         self.auth_card = CardFrame(
-            "Авторизація",
-            parent=self,
-            image_path="keyguard/resources/locker.svg"
+            "Авторизація", parent=self, image_path="resources/locker.svg"
         )
 
         for card in (self.train_card, self.auth_card):
             card.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Expanding
+                QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
             )
 
         home_page = QWidget(self)
@@ -48,18 +53,10 @@ class MainFrame(QWidget):
 
         self.train_card.clicked.connect(lambda: self.stack.setCurrentIndex(1))
         self.training_page.back_clicked.connect(lambda: self.stack.setCurrentIndex(0))
-        
+
         self.auth_card.clicked.connect(lambda: self.stack.setCurrentIndex(2))
         self.auth_page.back_clicked.connect(lambda: self.stack.setCurrentIndex(0))
         self.auth_page.switch_to_training.connect(lambda: self.stack.setCurrentIndex(1))
-
-        # self.train_card.clicked.connect(lambda: self.stack.setCurrentWidget(1))
-
-        # cards_group = QHBoxLayout()
-        # cards_group.setContentsMargins(0, 0, 0, 0)
-        # cards_group.setSpacing(0)
-        # cards_group.addWidget(self.train_card, stretch=1)
-        # cards_group.addWidget(self.auth_card, stretch=1)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -68,6 +65,7 @@ class MainFrame(QWidget):
 
         self.setLayout(layout)
 
-    def open_training(self):
+    def open_training(self) -> None:
+        """Open the training window."""
         self.training_window = TrainingFrame()
         self.training_window.show()
