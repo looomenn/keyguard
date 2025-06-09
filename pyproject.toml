@@ -29,7 +29,7 @@ build-backend = "poetry.core.masonry.api"
 line-length = 88
 target-version = "py311"
 
-select = [
+lint.select = [
     "E", # pycodestyle errors
     "W", # pycodestyle warnings
     "F", # Pyflakes
@@ -47,14 +47,12 @@ select = [
     "RUF", # Ruff-specific rules
 ]
 
-ignore = [
+lint.ignore = [
     # Common ignores that might conflict with other tools or preferences
     "D100", # Missing docstring in public module
     "D104", # Missing docstring in public package
     "D107", # Missing docstring in __init__
     "E501", # Line too long (handled by formatter, but linter might still flag if formatter isn't strict)
-    "ANN101", # Missing type annotation for self in method
-    "ANN102", # Missing type annotation for cls in classmethod
 ]
 
 exclude = [
@@ -67,5 +65,5 @@ exclude = [
     "docs",
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
