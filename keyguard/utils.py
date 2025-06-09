@@ -29,7 +29,7 @@ def get_resource_path(relative_path: str | Path) -> Path:
     return base_path / relative_path
 
 
-def get_user_data_dir(app_name: str = "Keyguard", app_author: str = "ange1o") -> Path:
+def get_user_data_dir(app_name: str = "keyguard", app_author: str = "ange1o") -> Path:
     """Get the user data directory for the application.
 
     Args:
@@ -39,8 +39,11 @@ def get_user_data_dir(app_name: str = "Keyguard", app_author: str = "ange1o") ->
     Returns:
         The user data directory.
     """
-    data_dir = user_data_path(appname=app_name, appauthor=app_author)
-    data_dir.mkdir(parents=True, exist_ok=True)
+    data_dir = Path(user_data_path(appname=app_name, appauthor=app_author))
+    try:
+        data_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        raise RuntimeError(f"Could not create data directory {data_dir!r}: {e}") from e
     return data_dir
 
 
