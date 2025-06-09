@@ -1,0 +1,37 @@
+name: ruff
+
+on:
+  push:
+    paths: '**.py'
+
+  pull_request:
+    paths: '**.py'
+
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'poetry'
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install --no-root --with dev
+
+      - name: Run Ruff Linter with Autofix
+        run: |
+          poetry run ruff check . --fix --exit-non-zero-on-fix
+
+      - name: Run Ruff Formatter Check
+        run: |
+          poetry run ruff format . --check
