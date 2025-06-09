@@ -1,6 +1,6 @@
 """UI components with black and white theme."""
 
-from PyQt6.QtWidgets import QLineEdit, QSpinBox, QPushButton
+from PyQt6.QtWidgets import QLineEdit, QSpinBox, QPushButton, QProgressBar
 from PyQt6.QtCore import Qt
 
 class LineEdit(QLineEdit):
@@ -88,3 +88,31 @@ class Button(QPushButton):
             }}
         """)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+class ProgressBar(QProgressBar):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet("""
+            QProgressBar {
+                background-color: #000000;
+                border: 1px solid #333333;
+                text-align: center;
+                color: #FFFFFF;
+                font-size: 14px;
+                height: 24px;
+            }
+            QProgressBar::chunk {
+                background-color: #007AFF;
+                border-radius: 1px;
+            }
+            QProgressBar:disabled {
+                background-color: #000000;
+                color: #666666;
+                border-color: #333333;
+            }
+            QProgressBar:disabled::chunk {
+                background-color: #333333;
+            }
+        """)
+        self.setTextVisible(True)
+        self.setFormat("%p%")
