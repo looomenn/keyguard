@@ -16,12 +16,13 @@ No options supported
 """
 import sys
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QKeySequence, QShortcut
+from PyQt6.QtGui import QKeySequence, QShortcut, QFont
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel
 
 from keyguard.gui.frames import MainFrame
+from keyguard.utils import load_font
 
-from keyguard.config import APP_SIZE, APP_TITLE
+from keyguard.config import APP_SIZE, APP_TITLE, GLOBAL_STYLESHEET
 
 
 class App(QMainWindow):
@@ -31,23 +32,26 @@ class App(QMainWindow):
         """Initialize an instance of the App class."""
         # windows setup
         super().__init__()
+        load_font()
+
+        self.setFont(QFont("IBM Plex Mono"))
+        self.setStyleSheet(GLOBAL_STYLESHEET)
+
         self.setWindowTitle(APP_TITLE)
         self.setFixedSize(APP_SIZE[0], APP_SIZE[1])
         self.center()
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
+        self.setObjectName("app")
 
         self.main_layout = QVBoxLayout(central_widget)
         self.main_layout.setContentsMargins(32, 32, 32, 32)
         self.main_layout.setSpacing(0)
 
         label = QLabel("Made by ange1o — experienced procrastinator", self)
-        label.setProperty("class", "card-title")
+        label.setProperty("class", "copyright-label")
         label.setAlignment(Qt.AlignmentFlag.AlignTop)
-        label.setStyleSheet("QLabel { color:#808080}")
-
-        self.setStyleSheet("background-color: #000000;")
 
         self.main_frame = MainFrame()
         self.main_layout.setSpacing(24)
@@ -71,6 +75,7 @@ class App(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication([])
+
     windows = App()
     windows.show()
     sys.exit(app.exec())

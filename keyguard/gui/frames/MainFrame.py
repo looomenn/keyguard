@@ -42,7 +42,7 @@ class MainFrame(QWidget):
         self.stack = QStackedWidget(self)
         self.stack.addWidget(home_page)
         self.stack.addWidget(self.training_page)
-        # self.stack.addWidget(self.auth_page)'
+        # self.stack.addWidget(self.auth_page)
 
         self.train_card.clicked.connect(lambda: self.stack.setCurrentIndex(1))
         self.training_page.back_clicked.connect(lambda: self.stack.setCurrentIndex(0))
