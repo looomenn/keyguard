@@ -11,10 +11,12 @@ from keyguard.utils import get_svg, load_profile, save_profile, create_profile, 
 from keyguard.gui.components.components import Button
 from keyguard.gui.views.NoProfile import NoProfile
 from keyguard.gui.views.LearningView import LearningView
+from keyguard.gui.views.SessionStatsView import SessionStatsView
 from keyguard.logic import update_aggregate_profile
 from keyguard.config import PHRASE
 
 class TrainingFrame(QWidget):
+    """Frame for training view."""
     back_clicked = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -66,12 +68,15 @@ class TrainingFrame(QWidget):
         self.content_stack = QStackedWidget()
         
         # Stack 0: No Profile
-        no_profile_widget = NoProfile()
-        no_profile_widget.start_training.connect(self._start_training)
-        self.content_stack.addWidget(no_profile_widget)
+        self.no_profile_widget = NoProfile()
+        self.no_profile_widget.start_training.connect(self._start_training)
+        self.content_stack.addWidget(self.no_profile_widget)
         
         # Stack 1: Learning View
         self.learning_view = None
+        
+        # Stack 2: Stats View
+        self.stats_view = None
         
         content_layout.addWidget(self.content_stack, stretch=1)
 
@@ -85,27 +90,54 @@ class TrainingFrame(QWidget):
         self._update_state()
 
     def _update_state(self):
-        profile = load_profile("resources/profile.json")
-        phrase = profile["phrase"] if profile else PHRASE
+        profile = load_profile("keyguard/resources/profile.json")
+        if not profile:
+            self.content_stack.setCurrentWidget(self.no_profile_widget)
+            return
+
+        phrase = profile["phrase"]
         
         if self.learning_view:
             self.content_stack.removeWidget(self.learning_view)
             self.learning_view.deleteLater()
             
+        if self.stats_view:
+            self.content_stack.removeWidget(self.stats_view)
+            self.stats_view.deleteLater()
+            self.stats_view = None
+            
         self.learning_view = LearningView(phrase, profile)
         self.learning_view.session_complete.connect(self._on_session_complete)
         self.learning_view.session_cancelled.connect(self._update_state)
+        self.learning_view.show_stats.connect(self._show_stats)
+        self.learning_view.state_changed.connect(self._on_state_changed)
         self.content_stack.addWidget(self.learning_view)
         self.content_stack.setCurrentWidget(self.learning_view)
 
     def _start_training(self):
+        """Start training by creating a new profile."""
+        profile = create_profile(PHRASE)
+        save_profile(profile, "keyguard/resources/profile.json")
         self._update_state()
 
+    def _show_stats(self, session):
+        """Show the stats view with session data."""
+        # Create stats view if it doesn't exist
+        if not self.stats_view:
+            self.stats_view = SessionStatsView(session)
+            self.stats_view.back_clicked.connect(self._update_state)
+            self.content_stack.addWidget(self.stats_view)
+        
+        # Update session data and refresh display
+        self.stats_view.session = session
+        self.stats_view.update_display()
+        
+        # Switch to stats view
+        self.content_stack.setCurrentWidget(self.stats_view)
+
     def _on_session_complete(self, session):
-        profile = load_profile("resources/profile.json")
-        if not profile:
-            profile = create_profile(session.get("phrase", self.learning_view.phrase))
-            
+        profile = load_profile("keyguard/resources/profile.json")
+
         session["timestamp"] = int(time.time())
         
         if "sessions" not in profile:
@@ -115,9 +147,10 @@ class TrainingFrame(QWidget):
         update_aggregate_profile(profile, session)
         profile["updated"] = time.strftime("%Y-%m-%d %H:%M", time.localtime(int(time.time())))
         
-        save_profile(profile, "resources/profile.json")
+        save_profile(profile, "keyguard/resources/profile.json")
         self._update_state()
 
-    def _on_delete_profile(self):
-        # TODO: implement profile deletion logic
-        pass
+    def _on_state_changed(self, state):
+        """Handle state changes from LearningView."""
+        if state == 0:  # Profile was deleted
+            self._update_state()  # This will show no_profile_widget since profile is gone
