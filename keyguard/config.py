@@ -2,8 +2,9 @@
 
 APP_TITLE: str = 'KeyGuard'
 APP_SIZE: tuple[int, int] = (1400, 740)
-PHRASE_LONG: str = "На подушечці форми любої є й ґудзик щоб пір'я геть жовте сховати"
-PHRASE: str = "щука бомба флюгер язик джміль щодня озеро грані"
+# PHRASE_LONG: str = "На подушечці форми любої є й ґудзик щоб пір'я геть жовте сховати"
+#PHRASE: str = "щука бомба флюгер язик джміль щодня озеро грані"
+PHRASE = "doom doom doom doom"
 
 FG_PRIMARY: str = "#FFFFFF"
 FG_SECONDARY: str = "#888888" 
