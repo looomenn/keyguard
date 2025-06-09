@@ -1,10 +1,18 @@
 """UI components with black and white theme."""
 
-from PyQt6.QtWidgets import QLineEdit, QSpinBox, QPushButton, QProgressBar
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QLineEdit, QProgressBar, QPushButton, QSpinBox, QWidget
+
 
 class LineEdit(QLineEdit):
-    def __init__(self, parent=None):
+    """Custom LineEdit."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Initialize an instance of the LineEdit class.
+
+        Args:
+            parent: The parent widget.
+        """
         super().__init__(parent)
 
         self.setStyleSheet("""
@@ -26,8 +34,16 @@ class LineEdit(QLineEdit):
             }
         """)
 
+
 class SpinBox(QSpinBox):
-    def __init__(self, parent=None):
+    """Custom SpinBox."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Initialize an instance of the SpinBox class.
+
+        Args:
+            parent: The parent widget.
+        """
         super().__init__(parent)
         self.setStyleSheet("""
             QSpinBox {
@@ -60,29 +76,41 @@ class SpinBox(QSpinBox):
             }
         """)
 
+
 class Button(QPushButton):
-    def __init__(self, text: str, primary: bool = False, parent=None):
+    """Custom Button."""
+
+    def __init__(
+        self, text: str, primary: bool = False, parent: QWidget | None = None
+    ) -> None:
+        """Initialize an instance of the Button class.
+
+        Args:
+            text: The text to display on the button.
+            primary: Whether the button is primary.
+            parent: The parent widget.
+        """
         super().__init__(text, parent)
         self.setStyleSheet(f"""
             QPushButton {{
-                background-color: {'#FFFFFF' if primary else '#000000'};
-                color: {'#000000' if primary else '#FFFFFF'};
-                border: 1px solid {'#FFFFFF' if primary else '#333333'};
+                background-color: {"#FFFFFF" if primary else "#000000"};
+                color: {"#000000" if primary else "#FFFFFF"};
+                border: 1px solid {"#FFFFFF" if primary else "#333333"};
                 padding: 8px 16px;
                 font-size: 14px;
                 font-weight: 500;
             }}
             QPushButton:hover {{
-                background-color: {'#F5F5F5' if primary else '#1A1A1A'};
+                background-color: {"#F5F5F5" if primary else "#1A1A1A"};
                 border-color: #007AFF;
             }}
             QPushButton:pressed {{
-                background-color: {'#E5E5E5' if primary else '#333333'};
+                background-color: {"#E5E5E5" if primary else "#333333"};
             }}
             QPushButton:disabled {{
-                background-color: {'#CCCCCC' if primary else '#000000'};
-                color: {'#666666' if primary else '#666666'};
-                border-color: {'#CCCCCC' if primary else '#333333'};
+                background-color: {"#CCCCCC" if primary else "#000000"};
+                color: #666666;
+                border-color: {"#CCCCCC" if primary else "#333333"};
             }}
             QPushButton:focus {{
                 border: 1px solid #007AFF;
@@ -90,8 +118,16 @@ class Button(QPushButton):
         """)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
+
 class ProgressBar(QProgressBar):
-    def __init__(self, parent=None):
+    """Custom ProgressBar."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Initialize an instance of the ProgressBar class.
+
+        Args:
+            parent: The parent widget.
+        """
         super().__init__(parent)
         self.setStyleSheet("""
             QProgressBar {
