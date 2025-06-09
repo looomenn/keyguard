@@ -106,7 +106,7 @@ class TrainingFrame(QWidget):
 
     def _update_state(self) -> None:
         """Update the state of the training frame."""
-        profile = load_profile("resources/profile.json")
+        profile = load_profile("profile.json")
         if not profile:
             self.content_stack.setCurrentWidget(self.no_profile_widget)
             return
@@ -133,7 +133,7 @@ class TrainingFrame(QWidget):
     def _start_training(self) -> None:
         """Start training by creating a new profile."""
         profile = create_profile(PHRASE)
-        save_profile(profile, "resources/profile.json")
+        save_profile(profile, "profile.json")
         self._update_state()
 
     def _show_stats(self, session: dict) -> None:
@@ -158,7 +158,7 @@ class TrainingFrame(QWidget):
         Args:
             session: the session data
         """
-        profile = load_profile("resources/profile.json")
+        profile = load_profile("profile.json")
 
         session["timestamp"] = int(time.time())
 
@@ -171,7 +171,7 @@ class TrainingFrame(QWidget):
             "%Y-%m-%d %H:%M", time.localtime(int(time.time()))
         )
 
-        save_profile(profile, "resources/profile.json")
+        save_profile(profile, "profile.json")
         self._update_state()
 
     def _on_state_changed(self, state: int) -> None:
