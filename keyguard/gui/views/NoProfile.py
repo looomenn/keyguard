@@ -6,10 +6,13 @@ from keyguard.config import FG_SECONDARY, FG_PRIMARY
 
 
 class NoProfile(QWidget):
+    """Widget shown when no profile exists or profile has no runs."""
     start_training = pyqtSignal()
-    def __init__(self, parent=None):
-        super().__init__(parent)
 
+    def __init__(self, mode="training", parent=None):
+        super().__init__(parent)
+        self.mode = mode  # "training" or "auth"
+        
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -25,11 +28,14 @@ class NoProfile(QWidget):
         sad_face.setProperty("class", "blank_state-emoji")
         sad_face.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        headline = QLabel("Профіль не знайдено")
+        headline = QLabel("Профіль не знайдено" if mode == "training" else "Недостатньо даних")
         headline.setProperty("class", "blank_state-heading")
         headline.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        subtext = QLabel("Почніть тренування, щоб сформувати профіль")
+        subtext = QLabel(
+            "Почніть тренування, щоб сформувати профіль" if mode == "training" else 
+            "Для авторизації потрібно спочатку пройти тренування"
+        )
         subtext.setProperty("class", "blank_state-description")
         subtext.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
