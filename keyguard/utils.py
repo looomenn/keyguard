@@ -1,46 +1,67 @@
 """Utility functions."""
 
-import sys
 import json
-import uuid
-import time
 import os
-
-from PyQt6.QtSvgWidgets import QSvgWidget
-from PyQt6.QtGui import QFontDatabase
-
+import sys
+import time
+import uuid
 from pathlib import Path
+
+from platformdirs import user_data_path
+from PyQt6.QtGui import QFontDatabase
+from PyQt6.QtSvgWidgets import QSvgWidget
+from PyQt6.QtWidgets import QWidget
 
 
 def get_resource_path(relative_path: str | Path) -> Path:
-    """
-    Get the absolute path for a resource, compatible with PyInstaller.
+    """Get the absolute path for a resource, compatible with PyInstaller.
 
-    :param relative_path: Path relative to the project root.
-    :return: Absolute path to the resource.
+    Args:
+        relative_path: Path relative to the project root.
+
+    Returns:
+        Absolute path to the resource.
     """
-    if hasattr(sys, '_MEIPASS'):
-        base_path = Path(sys._MEIPASS) / 'keyguard'
+    if hasattr(sys, "_MEIPASS"):
+        base_path = Path(sys._MEIPASS) / "keyguard"
     else:
-        base_path = Path(__file__).resolve().parent.parent
+        base_path = Path(__file__).resolve().parent
     return base_path / relative_path
 
 
-def get_svg(
-        relative_path: str | Path,
-        parent=None,
-        width: int = None,
-        height: int = None
-) -> QSvgWidget:
+def get_user_data_dir(app_name: str = "Keyguard", app_author: str = "ange1o") -> Path:
+    """Get the user data directory for the application.
+
+    Args:
+        app_name: The name of the application.
+        app_author: The author of the application.
+
+    Returns:
+        The user data directory.
     """
-    Create a QSvgWidget from an SVG file located in resources.
+    data_dir = user_data_path(appname=app_name, appauthor=app_author)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return data_dir
+
+
+def get_svg(
+    relative_path: str | Path,
+    parent: QWidget | None = None,
+    width: int | None = None,
+    height: int | None = None,
+) -> QSvgWidget:
+    """Create a QSvgWidget from an SVG file located in resources.
+
     Optionally set fixed width/height to scale.
 
-    :param relative_path: Path inside resources folder
-    :param parent: parent widget
-    :param width: use as fixed width
-    :param height: use as fixed height
-    :return: configured QSvgWidget
+    Args:
+        relative_path: Path inside resources folder
+        parent: parent widget
+        width: use as fixed width
+        height: use as fixed height
+
+    Returns:
+        configured QSvgWidget
     """
     path = get_resource_path(relative_path)
     svg = QSvgWidget(str(path), parent=parent)
@@ -60,54 +81,103 @@ def get_svg(
 
 
 def load_font() -> None:
-    """Load custom font."""
-    fonts_dir = get_resource_path("keyguard/resources/font")
+    """Load custom font.
+
+    Returns:
+        None
+    """
+    fonts_dir = get_resource_path("resources/font")
     loaded = False
     for font_file in fonts_dir.iterdir():
         if font_file.suffix.lower() in {".ttf", ".otf"}:
             font_id = QFontDatabase.addApplicationFont(str(font_file))
             if font_id < 0:
-                print(f"⚠️ Failed to load font {font_file.name}")
+                print(f"Failed to load font {font_file.name}")
                 return
-            families = QFontDatabase.applicationFontFamilies(font_id)
             loaded = True
     if loaded:
         print("✅ Fonts loaded successfully")
 
 
-def load_profile(path: str) -> dict:
-    abs_path = get_resource_path(path)
+def load_profile(filename: str = "profile.json") -> dict:
+    """Load a user profile from the user data directory.
+
+    Args:
+        filename: The name of the profile file.
+
+    Returns:
+        The profile data.
+    """
+    profile_dir = get_user_data_dir()
+    profile_path = profile_dir / filename
+
     try:
-        with open(abs_path, "r", encoding="utf-8") as f:
+        with open(profile_path, encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
+    except FileNotFoundError:
+        print(f"Profile file not found at: {profile_path}")
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON from {profile_path}: {e}")
+        return {}
+    except Exception as e:
+        print(f"An unexpected error occurred loading profile from {profile_path}: {e}")
         return {}
 
 
-def save_profile(profile: dict, path: str) -> None:
-    abs_path = get_resource_path(path)
-    with open(abs_path, "w", encoding="utf-8") as f:
-        json.dump(profile, f, ensure_ascii=False, indent=2)
+def save_profile(profile: dict, filename: str = "profile.json") -> None:
+    """Save a user profile to the user data directory.
 
+    Args:
+        profile: The profile data.
+        filename: The name of the profile file.
 
-def delete_profile(path: str) -> bool:
+    Returns:
+        None
     """
-    Delete a profile file.
-    
-    :param path: Path to the profile file
-    :return: True if deletion was successful, False otherwise
-    """
+    profile_dir = get_user_data_dir()
+    profile_path = profile_dir / filename
+
     try:
-        abs_path = get_resource_path(path)
-        if abs_path.exists():
-            os.remove(abs_path)
+        with open(profile_path, "w", encoding="utf-8") as f:
+            json.dump(profile, f, ensure_ascii=False, indent=2)
+        print(f"Profile saved successfully to: {profile_path}")
+    except Exception as e:
+        print(f"Error saving profile to {profile_path}: {e}")
+
+
+def delete_profile(filename: str = "profile.json") -> bool:
+    """Delete a profile file from the user data directory.
+
+    Args:
+        filename: The name of the profile file.
+
+    Returns:
+        bool: True if the profile was deleted, False otherwise.
+    """
+    profile_dir = get_user_data_dir()
+    profile_path = profile_dir / filename
+    try:
+        if profile_path.exists():
+            os.remove(profile_path)
+            return True
+        else:
+            print(f"Profile file not found for deletion: {profile_path}")
             return True
     except Exception as e:
-        print(f"Error deleting profile: {e}")
+        print(f"Error deleting profile {profile_path}: {e}")
     return False
 
 
 def create_profile(phrase: str) -> dict:
+    """Create a new profile.
+
+    Args:
+        phrase: The phrase to use for the profile.
+
+    Returns:
+        The profile data.
+    """
     now = int(time.time())
     return {
         "uuid": str(uuid.uuid4()),
@@ -122,4 +192,9 @@ def create_profile(phrase: str) -> dict:
 
 
 def generate_session_id() -> str:
+    """Generate a new session ID.
+
+    Returns:
+        The session ID.
+    """
     return str(uuid.uuid4())
