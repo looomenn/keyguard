@@ -1,26 +1,43 @@
 # keyguard/gui/views/AuthView.py
 
-import math
-from PyQt6.QtCore    import pyqtSignal, QEvent, Qt
-from PyQt6.QtGui     import QKeySequence, QKeyEvent
-from keyguard.gui.views.LearningView import LearningView
-from keyguard.logic   import calculate_authentication_delta
 import numpy as np
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QWidget
+
+from keyguard.gui.views.LearningView import LearningView
+from keyguard.logic import calculate_authentication_delta
+
 
 class AuthView(LearningView):
     """View for authentication using typing pattern."""
-    auth_success = pyqtSignal()
-    auth_failed  = pyqtSignal()
 
-    def __init__(self, profile, parent=None):
-        super().__init__(phrase=profile.get("phrase", ""), profile=profile, parent=parent, show_panel=False)
+    auth_success = pyqtSignal()
+    auth_failed = pyqtSignal()
+
+    def __init__(self, profile: dict, parent: QWidget | None = None) -> None:
+        """Initialize AuthView.
+
+        Args:
+            profile: the profile data
+            parent: the parent widget
+        """
+        super().__init__(
+            phrase=profile.get("phrase", ""),
+            profile=profile,
+            parent=parent,
+            show_panel=False,
+        )
         self.attempts = 1
         self.max_attempts = 1
 
         self.profile_stats = self._get_profile_stats()
 
-    def _get_profile_stats(self):
-        """Compute per-position mean and variance from all saved runs."""
+    def _get_profile_stats(self) -> dict:
+        """Compute per-position mean and variance from all saved runs.
+
+        Returns:
+            dict: the profile statistics
+        """
         profile = self.profile or {}
         sessions = profile.get("sessions", [])
         phrase_len = len(profile.get("phrase", ""))
@@ -36,30 +53,35 @@ class AuthView(LearningView):
                     all_dwells.append(run)
 
         if not all_dwells:
-            return None
+            return {"means": [], "variances": []}
 
         try:
-            arr = np.array(all_dwells, dtype=float)
+            arr = np.array(all_dwells)
             means = arr.mean(axis=0).tolist()
-            vars  = arr.var(axis=0).tolist()
+            variances = arr.var(axis=0, ddof=1).tolist()
         except Exception:
-            # Fallback pure Python
-            cols = list(zip(*all_dwells))
-            means = [sum(col)/len(col) for col in cols]
-            vars  = [sum((x - m)**2 for x in col)/len(col) for col, m in zip(cols, means)]
+            cols = list(zip(*all_dwells, strict=False))
+            means = [sum(col) / len(col) for col in cols]
+            variances = [
+                sum((x - m) ** 2 for x in col) / (len(col) - 1)
+                for col, m in zip(cols, means, strict=False)
+            ]
 
-        return {"means": means, "variances": vars}
+        return {"means": means, "variances": variances}
 
+    def _on_session_complete(self, session: dict) -> None:
+        """Handle a single authentication attempt.
 
-    def _on_session_complete(self, session: dict):
-        """Handle a single authentication attempt."""
+        Args:
+            session: the session data
+        """
         runs = session.get("runs", [])
         stats = self.profile_stats
         if not runs or not stats:
             self.auth_failed.emit()
             return
 
-        actual = runs[0]  # first (and only) run
+        actual = runs[0]
         if not actual:
             self.auth_failed.emit()
             return
@@ -68,7 +90,7 @@ class AuthView(LearningView):
         variances = stats["variances"]
 
         deltas, thresholds, ok_flags = calculate_authentication_delta(
-            actual, means, variances, threshold_factor=2.0
+            actual, means, variances, threshold_factor=2.5
         )
 
         print("DELTAS:", deltas)
@@ -80,9 +102,10 @@ class AuthView(LearningView):
             print("Auth success")
         else:
             self.attempts += 1
+            print("Auth failed: Attempt", self.attempts)
+            self._reset_session()
+
             if self.attempts >= self.max_attempts:
                 self.auth_failed.emit()
                 print("Auth failed: Max attempts reached")
-            else:
-                print("Auth failed: Attempt", self.attempts)
                 self._reset_session()
