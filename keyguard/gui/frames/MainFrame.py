@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt
 
 from .CardFrame import CardFrame
 from .TrainingFrame import TrainingFrame
+from .AuthFrame import AuthFrame
 
 
 class MainFrame(QWidget):
@@ -38,14 +39,19 @@ class MainFrame(QWidget):
         home_layout.addWidget(self.auth_card, stretch=1)
 
         self.training_page = TrainingFrame(parent=self)
+        self.auth_page = AuthFrame(parent=self)
 
         self.stack = QStackedWidget(self)
         self.stack.addWidget(home_page)
         self.stack.addWidget(self.training_page)
-        # self.stack.addWidget(self.auth_page)
+        self.stack.addWidget(self.auth_page)
 
         self.train_card.clicked.connect(lambda: self.stack.setCurrentIndex(1))
         self.training_page.back_clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        
+        self.auth_card.clicked.connect(lambda: self.stack.setCurrentIndex(2))
+        self.auth_page.back_clicked.connect(lambda: self.stack.setCurrentIndex(0))
+        self.auth_page.switch_to_training.connect(lambda: self.stack.setCurrentIndex(1))
 
         # self.train_card.clicked.connect(lambda: self.stack.setCurrentWidget(1))
 
