@@ -1,0 +1,7 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.13 # Match the version in your pyproject.toml
+    hooks:
+      - id: ruff # This runs the linter (check command)
+        args: [--fix, --exit-non-zero-on-fix] # --fix applies autofixes, --exit-non-zero-on-fix fails if changes are made, forcing the user to re-add.
+      - id: ruff-format # This runs the formatter
