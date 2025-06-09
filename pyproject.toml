@@ -13,14 +13,59 @@ python = ">=3.11"
 pyqt6 = ">=6.9.1,<7.0.0"
 keyring = ">=24.3.0,<25.0.0"
 scipy = "^1.15.3"
+platformdirs = "^4.3.8"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.16.0"
 pytest = "^8.4.0"
-flake8 = "^7.2.0"
-flake8-docstrings = "^1.7.0"
-flake8-bugbear = "^24.12.12"
+ruff = "^0.11.13"
+pre-commit = "^4.2.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # Pyflakes
+    "C", # Complexity (McCabe)
+    "I", # isort (for import sorting)
+    "N", # Naming conventions
+    "D", # pydocstyle (docstring style) - requires configuration
+    "UP", # pyupgrade (suggests modern Python syntax)
+    "ANN", # flake8-annotations (type hint style) - requires configuration
+    "ASYNC", # flake8-async (asyncio best practices)
+    "B", # flake8-bugbear (common bug patterns)
+    "A", # flake8-builtins (shadowing builtins)
+    "SIM", # flake8-simplify (simplification opportunities)
+    "TID", # flake8-tidy-imports (import organization)
+    "RUF", # Ruff-specific rules
+]
+
+ignore = [
+    # Common ignores that might conflict with other tools or preferences
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D107", # Missing docstring in __init__
+    "E501", # Line too long (handled by formatter, but linter might still flag if formatter isn't strict)
+    "ANN101", # Missing type annotation for self in method
+    "ANN102", # Missing type annotation for cls in classmethod
+]
+
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "docs",
+]
+
+[tool.ruff.pydocstyle]
+convention = "google"
