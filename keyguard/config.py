@@ -1,26 +1,25 @@
 """Global constants."""
 
-APP_TITLE: str = 'KeyGuard'
+APP_TITLE: str = "KeyGuard"
 APP_SIZE: tuple[int, int] = (1400, 740)
-# PHRASE_LONG: str = "На подушечці форми любої є й ґудзик щоб пір'я геть жовте сховати"
-#PHRASE: str = "щука бомба флюгер язик джміль щодня озеро грані"
-PHRASE = "doom doom doom doom"
+PHRASE: str = "щука бомба флюгер язик джміль щодня озеро грані"
+# PHRASE_TEST = "doom doom doom doom"
 
 FG_PRIMARY: str = "#FFFFFF"
-FG_SECONDARY: str = "#888888" 
+FG_SECONDARY: str = "#888888"
 BORDER_PRIMARY: str = "#333333"
-FONT_FAMILY = "IBM Plex Mono"
+FONT_FAMILY: str = "IBM Plex Mono"
 
-FONT_SIZE = {
-    "xs":   12,   # extra-small (legal fine print)
-    "sm":   14,   # small (fine print, secondary text)
-    "base": 16,   # base/body text
-    "lg":   18,   # lead text, small labels
-    "xl":   20,   # subheadings
-    "2xl":  24,   # section headings
-    "3xl":  30,   # page headings
-    "4xl":  36,   # large display
-    "5xl":  48,   # hero/title
+FONT_SIZE: dict[str, int] = {
+    "xs": 12,  # extra-small (legal fine print)
+    "sm": 14,  # small (fine prin1t, secondary text)
+    "base": 16,  # base/body text
+    "lg": 18,  # lead text, small labels
+    "xl": 20,  # subheadings
+    "2xl": 24,  # section headings
+    "3xl": 30,  # page headings
+    "4xl": 36,  # large display
+    "5xl": 48,  # hero/title
 }
 
 GLOBAL_STYLESHEET = f"""
