@@ -2,27 +2,32 @@ import uuid
 import time
 import os
 from datetime import datetime
+import numpy as np
+
+from PyQt6.QtGui import QKeySequence, QKeyEvent
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QEvent
 from keyguard.gui.components.components import Button, LineEdit, ProgressBar
 from keyguard.gui.components.LabelValue import LabelValue
 from keyguard.logic import remove_outliers_per_position, compute_session_stats
-from keyguard.utils import delete_profile, get_resource_path
+from keyguard.utils import delete_profile, get_resource_path, get_svg
 
 
 class LearningView(QWidget):
     session_complete = pyqtSignal(dict)
     session_cancelled = pyqtSignal()
-    state_changed = pyqtSignal(int)  # Signal to switch states
+    state_changed = pyqtSignal(int)
+    show_stats = pyqtSignal(dict)
+    back_clicked = pyqtSignal()
 
-    def __init__(self, phrase, profile=None, parent=None):
+    def __init__(self, phrase, profile=None, parent=None, show_panel=True):
         super().__init__(parent)
         self.phrase = phrase
         self.profile = profile or {}
-        self.profile_path = get_resource_path("keyguard/profiles/profile.json")
-        self.max_runs = 2
+        self.profile_path = get_resource_path("keyguard/resources/profile.json")
+        self.max_runs = 10
         self.max_mistakes = 3
         self.current_run = 0
         self.mistakes = 0
@@ -31,6 +36,9 @@ class LearningView(QWidget):
         self.session_start_ts = int(time.time())
         self.accepted_runs = 0
         self.session_id = str(uuid.uuid4())[:8]
+
+        # Connect signals
+        self.show_stats.connect(self._on_session_complete)
 
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -46,7 +54,7 @@ class LearningView(QWidget):
         # Center container for session content
         session_content = QWidget()
         session_content_layout = QVBoxLayout(session_content)
-        session_content_layout.setContentsMargins(40, 0, 0, 0)
+        session_content_layout.setContentsMargins(40, 0, 0, 0) if show_panel else session_content_layout.setContentsMargins(40, 0, 40, 0)
         session_content_layout.setSpacing(24)
         session_content_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
@@ -72,14 +80,18 @@ class LearningView(QWidget):
         input_layout = QVBoxLayout(input_container)
         input_layout.setContentsMargins(0, 0, 0, 0)
         input_layout.setSpacing(0)
+    
         self.input = LineEdit()
         self.input.setMinimumHeight(60)
         self.input.setPlaceholderText("Введіть фразу.")
         self.input.installEventFilter(self)
+        self.input.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.input.installEventFilter(self)
+        
         input_layout.addWidget(self.input)
         session_content_layout.addWidget(input_container)
+        
 
-        # Container for progress to control its width
         progress_container = QWidget()
         progress_container.setProperty("class", "progress-container")
         progress_layout = QVBoxLayout(progress_container)
@@ -90,8 +102,7 @@ class LearningView(QWidget):
         self.progress.setValue(0)
         progress_layout.addWidget(self.progress)
         session_content_layout.addWidget(progress_container)
-
-        # Container for hint to control its width
+        
         hint_container = QWidget()
         hint_container.setProperty("class", "hint-container")
         hint_layout = QVBoxLayout(hint_container)
@@ -102,61 +113,64 @@ class LearningView(QWidget):
         hint_layout.addWidget(self.hint, alignment=Qt.AlignmentFlag.AlignCenter)
         session_content_layout.addWidget(hint_container)
 
-        # Container for cancel button to control its width
+
         button_container = QWidget()
         button_container.setProperty("class", "button-container")
         button_layout = QVBoxLayout(button_container)
         button_layout.setContentsMargins(0, 0, 0, 0)
         button_layout.setSpacing(0)
-        cancel = Button("Зупинити тренування")
+        cancel = Button("Нова сесія")
         cancel.clicked.connect(self.session_cancelled.emit)
-        button_layout.addWidget(cancel, alignment=Qt.AlignmentFlag.AlignCenter)
-        session_content_layout.addWidget(button_container)
+        button_layout.addWidget(cancel, alignment=Qt.AlignmentFlag.AlignLeft)
+        
+        if show_panel:
+            session_content_layout.addWidget(button_container)
 
         session_layout.addWidget(session_content)
         main_layout.addWidget(session_frame, stretch=3)
 
         # Right: Profile info
-        profile_frame = QFrame()
-        profile_frame.setProperty("class", "profile-panel")
-        profile_layout = QVBoxLayout(profile_frame)
-        profile_layout.setContentsMargins(24, 24, 24, 24)
-        profile_layout.setSpacing(24)
+        if show_panel:
+            profile_frame = QFrame()
+            profile_frame.setProperty("class", "profile-panel")
+            profile_layout = QVBoxLayout(profile_frame)
+            profile_layout.setContentsMargins(24, 24, 24, 24)
+            profile_layout.setSpacing(24)
 
-        title = QLabel("Поточний профіль")
-        title.setProperty("class", "profile-panel_title")
-        profile_layout.addWidget(title)
+            title = QLabel("Поточний профіль")
+            title.setProperty("class", "profile-panel_title")
+            profile_layout.addWidget(title)
 
-        # Create profile info rows using LabelValue
-        self.profile_labels = {}
-        self.profile_labels["USERID"] = LabelValue("USERID", str(self.profile.get("uuid", "N/A")), size="medium", bold=True)
-        self.profile_labels["Created"] = LabelValue("Created", str(self.profile.get("created", "N/A")), size="medium")
-        self.profile_labels["Updated"] = LabelValue("Updated", str(self.profile.get("updated", "N/A")), size="medium")
-        self.profile_labels["RUNS"] = LabelValue("Total runs", str(self.profile.get("total_runs", "N/A")), size="medium", bold=True)
-        
-        avg_dwell = "N/A"
-        means = self.profile.get("means")
-        if means and isinstance(means, list) and len(means) > 0:
-            avg_dwell = f"{sum(means)/len(means):.0f} ms"
-        self.profile_labels["Avg Dwell"] = LabelValue("Avg Dwell", avg_dwell, size="medium", bold=True)
+            # Create profile info rows using LabelValue
+            self.profile_labels = {}
+            self.profile_labels["USERID"] = LabelValue("USERID", str(self.profile.get("uuid", "N/A")), size="medium", bold=True)
+            self.profile_labels["Created"] = LabelValue("Created", str(self.profile.get("created", "N/A")), size="medium")
+            self.profile_labels["Updated"] = LabelValue("Updated", str(self.profile.get("updated", "N/A")), size="medium")
+            self.profile_labels["RUNS"] = LabelValue("Total runs", str(self.profile.get("total_runs", "N/A")), size="medium", bold=True)
+            
+            avg_dwell = "N/A"
+            means = self.profile.get("means")
+            if means and isinstance(means, list) and len(means) > 0:
+                avg_dwell = f"{sum(means)/len(means):.0f} ms"
+            self.profile_labels["Avg Dwell"] = LabelValue("Avg Dwell", avg_dwell, size="medium", bold=True)
 
-        # Add all profile labels to layout
-        for label in self.profile_labels.values():
-            profile_layout.addWidget(label)
+            # Add all profile labels to layout
+            for label in self.profile_labels.values():
+                profile_layout.addWidget(label)
 
-        profile_layout.addStretch(1)
+            profile_layout.addStretch(1)
 
-        delete_btn = Button("Видалити")
-        # Check if profile file exists and disable button if it doesn't
-        profile_exists = os.path.exists(self.profile_path)
-        delete_btn.setEnabled(profile_exists)
-        delete_btn.clicked.connect(self._on_delete_profile)
-        profile_layout.addWidget(delete_btn, alignment=Qt.AlignmentFlag.AlignBottom)
+            delete_btn = Button("Видалити")
 
-        main_layout.addWidget(profile_frame, stretch=1)
+            self._update_delete_button()
+            delete_btn.clicked.connect(self._on_delete_profile)
+            profile_layout.addWidget(delete_btn, alignment=Qt.AlignmentFlag.AlignBottom)
+
+            main_layout.addWidget(profile_frame, stretch=1)
 
     def eventFilter(self, obj, event):
         if obj is self.input:
+
             if event.type() == QEvent.Type.KeyPress:
                 self._press_ts = time.perf_counter()
                 return False
@@ -165,7 +179,6 @@ class LearningView(QWidget):
                 char = event.text()
                 rel_ts = time.perf_counter()
 
-                # if user pressed Enter
                 if event.key() == Qt.Key.Key_Return:
                     entered = self.input.text()
                     if entered == self.phrase:
@@ -196,20 +209,36 @@ class LearningView(QWidget):
                             self._reset_session()
                         return True
 
-                if char:
-                    self.timestamps.append((self._press_ts, rel_ts))
-                    # Update character highlighting
-                    current_text = self.input.text()
-                    matched = 0
-                    incorrect = 0
-                    for i, (typed, expected) in enumerate(zip(current_text, self.phrase)):
-                        if typed == expected:
-                            matched = i + 1
-                        else:
-                            incorrect = i + 1
-                            break
+                if char and len(self.timestamps) < len(self.phrase):
+                    pos = len(self.timestamps)
+                    correct = self.phrase[pos]
+
+                    if char == correct:
+                        self.timestamps.append((self._press_ts, rel_ts))
+                        matched = pos + 1
+                        incorrect = 0
+                    else:
+                        self.mistakes += 1
+                        matched = pos
+                        incorrect = pos + 1
+                        self.hint.setText("Невірний текст, спробуйте знову")
+                        self.input.clear()
+                        self.timestamps.clear()
+
                     self.phrase_label.highlight_match(matched, incorrect)
-                    return True
+
+
+                    # current_text = self.input.text()
+                    # matched = 0
+                    # incorrect = 0
+                    # for i, (typed, expected) in enumerate(zip(current_text, self.phrase)):
+                    #     if typed == expected:
+                    #         matched = i + 1
+                    #     else:
+                    #         incorrect = i + 1
+                    #         break
+                    # self.phrase_label.highlight_match(matched, incorrect)
+                    # return True
 
         return super().eventFilter(obj, event)
 
@@ -219,27 +248,50 @@ class LearningView(QWidget):
         self.session_runs.clear()
         self.timestamps = []
         self.progress.setValue(0)
-        # Reset highlighting
         self.phrase_label.highlight_match(0)
 
     def _finish_session(self):
-        # remove outliers per character position
         cleaned = remove_outliers_per_position(self.session_runs)
-        # compute session stats
         mean_s, std_s, _ = compute_session_stats(cleaned)
         session = {
-            "id": self.session_id,
+            "session_id": self.session_id,
             "phrase": self.phrase,
             "timestamp": self.session_start_ts,
-            "runs_count": self.current_run,
+            "total_runs": self.current_run,
             "accepted_runs": self.accepted_runs,
             "runs": cleaned,
-            "mean_session": mean_s,
-            "stddev_session": std_s
+            "mean": mean_s,
+            "stddev": std_s
         }
         self.session_complete.emit(session)
+        self.show_stats.emit(session)
+
+    def _on_profile_created(self):
+        """Update UI when profile is created."""
+        print("asdasd")
+        if hasattr(self, 'delete_btn'):
+            self.delete_btn.setEnabled(True)
+
+    def _update_delete_button(self):
+        """Update delete button state based on profile existence."""
+        if hasattr(self, 'delete_btn'):
+            self.delete_btn.setEnabled(os.path.exists(self.profile_path))
 
     def _on_delete_profile(self):
-        """Handle profile deletion and switch to state 0."""
+        """Handle profile deletion."""
         if delete_profile(self.profile_path):
-            self.state_changed.emit(0)  # Switch to state 0 after successful deletion 
+            self.state_changed.emit(0)
+
+    def _on_stats_back(self):
+        self.content_stack.setCurrentIndex(0)
+
+    def _on_session_complete(self, session):
+        """Handle session completion."""
+        # Compute statistics
+        if session.get("runs"):
+
+            dwells = session["runs"][0]
+            session["mean"] = np.mean(dwells)
+            session["std"] = np.std(dwells)
+            
+        self.session_cancelled.emit()
