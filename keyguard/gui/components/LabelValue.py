@@ -46,7 +46,7 @@ class LabelValue(QWidget):
         rest = raw[incorrect:] if incorrect > matched else raw[matched:]
 
         html = (
-            f'<span style="color: #4CAF50;">{correct}</span>'
+            f'<span style="color: #69FF6E;">{correct}</span>'
             f'<span style="color: #f44336;">{wrong}</span>'
             f'<span style="color: #666;">{rest}</span>'
         )
