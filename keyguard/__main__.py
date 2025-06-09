@@ -1,5 +1,4 @@
-"""
-KeyGuard - Entry point.
+"""KeyGuard - Entry point.
 
 This script allows you to run KeyGuard as a standalone application from the
 command line.
@@ -14,6 +13,7 @@ Options:
 --------
 No options supported
 """
+
 import sys
 
 from PyQt6.QtCore import Qt
@@ -28,7 +28,7 @@ from keyguard.utils import load_font
 class App(QMainWindow):
     """Represent the main application interface."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize an instance of the App class."""
         super().__init__()
         load_font()
@@ -66,9 +66,9 @@ class App(QMainWindow):
         frame_geometry.moveCenter(screen_geometry)
         self.move(frame_geometry.topLeft())
 
-    def init_shortcuts(self):
+    def init_shortcuts(self) -> None:
         """Initialize key bindings."""
-        escape_shortcut = QShortcut(QKeySequence('Escape'), self)
+        escape_shortcut = QShortcut(QKeySequence("Escape"), self)
         escape_shortcut.activated.connect(self.close)
 
 
