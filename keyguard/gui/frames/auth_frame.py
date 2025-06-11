@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from keyguard.config import MIN_SESSIONS_FOR_AUTH
 from keyguard.gui.components.components import Button
 from keyguard.gui.views.AuthView import AuthView
 from keyguard.gui.views.DashboardView import DashboardView
@@ -104,7 +105,7 @@ class AuthFrame(QWidget):
         if (
             not profile
             or not profile.get("sessions")
-            or len(profile.get("sessions", [])) < 1
+            or len(profile.get("sessions", [])) < MIN_SESSIONS_FOR_AUTH
         ):
             self.content_stack.setCurrentWidget(self.no_profile_widget)
             return
@@ -135,4 +136,4 @@ class AuthFrame(QWidget):
 
     def _on_auth_failed(self) -> None:
         """Handle failed authentication."""
-        self.content_stack.setCurrentWidget(self.auth_view)
+        self._update_state()
