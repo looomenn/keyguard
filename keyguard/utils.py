@@ -172,6 +172,20 @@ def delete_profile(filename: str = "profile.json") -> bool:
     return False
 
 
+def profile_exists(filename: str = "profile.json") -> bool:
+    """Check if a profile file exists.
+
+    Args:
+        filename: The name of the profile file.
+
+    Returns:
+        bool: True if the profile file exists, False otherwise.
+    """
+    profile_dir = get_user_data_dir()
+    profile_path = profile_dir / filename
+    return profile_path.exists()
+
+
 def create_profile(phrase: str) -> dict:
     """Create a new profile.
 

@@ -1,4 +1,3 @@
-import os
 import time
 import uuid
 
@@ -16,7 +15,7 @@ from keyguard.config import MAX_MISTAKES, MAX_TRAINING_RUNS
 from keyguard.gui.components.components import Button, LineEdit, ProgressBar
 from keyguard.gui.components.LabelValue import LabelValue
 from keyguard.logic import compute_session_stats, remove_outliers_per_position
-from keyguard.utils import delete_profile, get_resource_path
+from keyguard.utils import delete_profile, profile_exists
 
 
 class LearningView(QWidget):
@@ -46,7 +45,6 @@ class LearningView(QWidget):
         super().__init__(parent)
         self.phrase = phrase
         self.profile = profile or {}
-        self.profile_path = get_resource_path("resources/profile.json")
         self.max_runs = MAX_TRAINING_RUNS
         self.max_mistakes = MAX_MISTAKES
         self.current_run = 0
@@ -303,11 +301,11 @@ class LearningView(QWidget):
     def _update_delete_button(self) -> None:
         """Update delete button state based on profile existence."""
         if hasattr(self, "delete_btn"):
-            self.delete_btn.setEnabled(os.path.exists(self.profile_path))
+            self.delete_btn.setEnabled(profile_exists())
 
     def _on_delete_profile(self) -> None:
         """Handle profile deletion."""
-        if delete_profile(self.profile_path):
+        if delete_profile():
             self.state_changed.emit(0)
 
     def _on_stats_back(self) -> None:
