@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from keyguard.config import MAX_TRAINING_RUNS
+from keyguard.config import MAX_MISTAKES, MAX_TRAINING_RUNS
 from keyguard.gui.components.components import Button, LineEdit, ProgressBar
 from keyguard.gui.components.LabelValue import LabelValue
 from keyguard.logic import compute_session_stats, remove_outliers_per_position
@@ -48,7 +48,7 @@ class LearningView(QWidget):
         self.profile = profile or {}
         self.profile_path = get_resource_path("resources/profile.json")
         self.max_runs = MAX_TRAINING_RUNS
-        self.max_mistakes = 3
+        self.max_mistakes = MAX_MISTAKES
         self.current_run = 0
         self.mistakes = 0
         self.timestamps = []
@@ -194,7 +194,7 @@ class LearningView(QWidget):
 
             main_layout.addWidget(profile_frame, stretch=1)
 
-    def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # noqa: N802
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # noqa: N802 C901
         """Handle events for the input widget.
 
         Args:
@@ -255,9 +255,14 @@ class LearningView(QWidget):
                         self.mistakes += 1
                         matched = pos
                         incorrect = pos + 1
+
                         self.hint.setText("Невірний текст, спробуйте знову")
                         self.input.clear()
                         self.timestamps.clear()
+
+                        if self.mistakes > self.max_mistakes:
+                            self.hint.setText("Забагато помилок. Починаємо спочатку.")
+                            self._reset_session()
 
                     self.phrase_label.highlight_match(matched, incorrect)
 
