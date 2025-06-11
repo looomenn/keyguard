@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from keyguard.config import MAX_TRAINING_RUNS
 from keyguard.gui.components.components import Button, LineEdit, ProgressBar
 from keyguard.gui.components.LabelValue import LabelValue
 from keyguard.logic import compute_session_stats, remove_outliers_per_position
@@ -46,7 +47,7 @@ class LearningView(QWidget):
         self.phrase = phrase
         self.profile = profile or {}
         self.profile_path = get_resource_path("resources/profile.json")
-        self.max_runs = 4
+        self.max_runs = MAX_TRAINING_RUNS
         self.max_mistakes = 3
         self.current_run = 0
         self.mistakes = 0

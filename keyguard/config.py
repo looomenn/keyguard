@@ -9,6 +9,8 @@ FG_PRIMARY: str = "#FFFFFF"
 FG_SECONDARY: str = "#888888"
 BORDER_PRIMARY: str = "#333333"
 FONT_FAMILY: str = "IBM Plex Mono"
+MAX_TRAINING_RUNS: int = 15
+MAX_AUTH_ATTEMPTS: int = 3
 
 FONT_SIZE: dict[str, int] = {
     "xs": 12,  # extra-small (legal fine print)

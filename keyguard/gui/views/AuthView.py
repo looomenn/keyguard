@@ -4,6 +4,7 @@ import numpy as np
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
 
+from keyguard.config import MAX_AUTH_ATTEMPTS
 from keyguard.gui.views.LearningView import LearningView
 from keyguard.logic import calculate_authentication_delta
 
@@ -27,8 +28,8 @@ class AuthView(LearningView):
             parent=parent,
             show_panel=False,
         )
-        self.attempts = 1
-        self.max_attempts = 1
+        self.attempts = 0
+        self.max_attempts = MAX_AUTH_ATTEMPTS
 
         self.profile_stats = self._get_profile_stats()
 
