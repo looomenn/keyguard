@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Same naming mistake from the 1.1.2 update
+
+
 ## [1.1.2] - 12.06.2025
 
 ### Fixed
