@@ -56,7 +56,7 @@ class NoProfile(QWidget):
         subtext = QLabel(
             "Почніть тренування, щоб сформувати профіль"
             if mode == "training"
-            else "Для авторизації потрібно спочатку пройти тренування"
+            else "Для автентифікації потрібно спочатку пройти тренування"
         )
         subtext.setProperty("class", "blank_state-description")
         subtext.setAlignment(Qt.AlignmentFlag.AlignCenter)

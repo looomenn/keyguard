@@ -36,7 +36,7 @@ class DashboardView(QWidget):
         headline.setProperty("class", "blank_state-heading")
         headline.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        subtext = QLabel("Ви успішно авторизовані!")
+        subtext = QLabel("Ви успішно автентифіковані!")
         subtext.setProperty("class", "blank_state-description")
         subtext.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
