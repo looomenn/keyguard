@@ -32,7 +32,7 @@ class AuthFrame(QWidget):
             parent: the parent widget
         """
         super().__init__(parent)
-        self.setWindowTitle("Keyguard — Авторизація")
+        self.setWindowTitle("Keyguard — Автентифікація")
 
         header_frame = QFrame()
         header_frame.setProperty("class", "header-frame")
@@ -52,7 +52,7 @@ class AuthFrame(QWidget):
 
         logo = get_svg("resources/locker.svg", self, width=32, height=32)
 
-        header_title = QLabel("Авторизація")
+        header_title = QLabel("Автентифікація")
         header_title.setProperty("class", "header-title")
 
         header_left_layout.addWidget(back_btn)

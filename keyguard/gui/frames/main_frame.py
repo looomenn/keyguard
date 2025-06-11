@@ -28,7 +28,7 @@ class MainFrame(QWidget):
             "Тренування", parent=self, image_path="resources/training.svg"
         )
         self.auth_card = CardFrame(
-            "Авторизація", parent=self, image_path="resources/locker.svg"
+            "Автентифікація", parent=self, image_path="resources/locker.svg"
         )
 
         for card in (self.train_card, self.auth_card):
