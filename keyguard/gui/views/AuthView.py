@@ -46,10 +46,6 @@ class AuthView(LearningView):
         all_dwells = []
         for sess in sessions:
             for run in sess.get("runs", []):
-                print("RUN:", run)
-                print("RUN TYPE:", type(run))
-                print("RUN LENGTH:", len(run))
-                print("PHRASE LENGTH:", phrase_len)
                 if isinstance(run, list) and len(run) == phrase_len:
                     all_dwells.append(run)
 
@@ -91,22 +87,12 @@ class AuthView(LearningView):
         variances = stats["variances"]
 
         deltas, thresholds, ok_flags = calculate_authentication_delta(
-            actual, means, variances, threshold_factor=2.5
+            actual, means, variances, threshold_factor=2.85
         )
-
-        print("DELTAS:", deltas)
-        print("THRESHOLDS:", thresholds)
-        print("OK FLAGS:", ok_flags)
 
         if all(ok_flags):
             self.auth_success.emit()
-            print("Auth success")
         else:
-            self.attempts += 1
-            print("Auth failed: Attempt", self.attempts)
+            self.hint.setText("Автентифікація не вдалася. Спробуйте знову")
             self._reset_session()
-
-            if self.attempts >= self.max_attempts:
-                self.auth_failed.emit()
-                print("Auth failed: Max attempts reached")
-                self._reset_session()
+            self.auth_failed.emit()
